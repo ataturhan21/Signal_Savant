@@ -1,97 +1,67 @@
-<div align="center">
-
-[![Poetry](https://img.shields.io/badge/packaging-poetry-cyan.svg)](https://python-poetry.org/)
-[![GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336)](https://pycqa.github.io/isort/)
-
-</div>
-
-<hr>
-
 # Signal Savant
 
-A cutting-edge Telegram bot repository that empowers users with comprehensive fundamental and technical analysis insights, coupled with real-time buy-sell signals for diverse financial assets.
+A Python Telegram bot that retrieves OHLCV data through CCXT, calculates a volume/price ratio (VPR), and returns a candlestick chart with the indicator.
 
-## Table of Contents
+The active entry point is [`run.py`](run.py). The file `signal_savant/app.py` is empty; there is no implemented Streamlit interface.
 
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Contributing](#contributing)
-- [License](#license)
+## Local setup
 
-## Prerequisites
+The original environment uses Python 3.9 and Poetry 1.4.0. Dependency versions are recorded in [`pyproject.toml`](pyproject.toml) and `poetry.lock`.
 
-Before setting up the project, ensure that you have the following prerequisites installed on your machine:
-
-- Python (version 3.9):
-  (https://www.python.org/downloads/)
-- Poetry (version 1.4.0):
-  (https://python-poetry.org/docs/#installation)
-
-## Installation
-
-1. Clone the project repository:
-
-```
-git clone https://github.com/invictus-21/Signal_Savant.git
+```bash
+git clone https://github.com/ataturhan21/Signal_Savant.git
+cd Signal_Savant
+poetry install --no-root
 ```
 
-2. Navigate to the project directory:
+Create `.env` in the repository root using [`.env.example`](.env.example), then set:
 
-```
-cd signal_savant
-```
+| Variable | Purpose |
+| --- | --- |
+| `BOT_TOKEN` | Required Telegram bot credential used when `run.py` starts |
+| `USER_ID` | Destination chat ID used by `send_signal` if scheduled delivery is explicitly enabled |
 
-3. Install project dependencies using Poetry:
+The existing `.gitignore` excludes `.env`. Keep real credentials in that ignored file.
 
-```
-poetry install
-```
+Start from the repository root:
 
-This command will create a virtual environment and install all the necessary dependencies specified in the `pyproject.toml` file.
-
-## Usage
-
-1. Activate the virtual environment created by Poetry:
-
-```
-poetry shell
+```bash
+poetry run python run.py
 ```
 
-2. Run the project:
+On Windows, [`script/start_app.bat`](script/start_app.bat) resolves the working directory automatically.
 
-```
-streamlit run "signal_savant/app.py"
-```
+## Commands and behavior
 
-or click start.bat file in Windows
+- `/signal`: fetch market data and reply with an OHLC/VPR chart.
+- `/start` and `/help`: return the current greeting.
+- Other messages: return the command-help prompt.
 
+The scheduler block in `run.py` is commented out. Running the bot starts Telegram polling; it does not enable periodic signal pushes. Chart export uses Plotly and Kaleido.
 
-## Contributing
+## Market configuration
 
-If you would like to contribute to this project, follow the guidelines below:
+Edit [`config.py`](config.py) before running:
 
-1. Fork the repository and clone it locally.
+| Setting | Committed example |
+| --- | --- |
+| Exchange and symbol | `binance`, `BTC/USDT` |
+| Source and target interval | `5m` to `1h` |
+| Download start | `2023-01-01T00:00:00Z` |
+| Fetch limit | `1000` |
+| Upper and lower VPR thresholds | `60` and `40` |
+| Chart history | `60` rows |
 
-2. Create a new branch for your feature or bug fix:
-   ```
-   git checkout -b feature/your-feature
-   ```
+The configured history can cause a substantial initial download. Exchange access and Telegram credentials are required for a live run. Indicator thresholds are implementation settings, not a demonstrated prediction accuracy.
 
-3. Make your changes and commit them with descriptive commit messages.
+## Project map
 
-4. Push your changes to your forked repository:
-   ```
-   git push origin feature/your-feature
-   ```
+- [`run.py`](run.py): environment loading, Telegram handlers, and the inactive scheduling example.
+- [`utils.py`](utils.py): market downloads, resampling, VPR calculation, and image generation.
+- [`config.py`](config.py): the default market and indicator parameters.
 
-5. Open a pull request in the original repository, describing your changes in detail.
-
+The original dependency constraints are preserved. Live exchange requests, Telegram delivery, and current provider compatibility are separate from local calculation tests.
 
 ## License
 
-GPL v3
-
----
+[GNU General Public License v3.0](LICENSE).
