@@ -65,3 +65,11 @@ The original dependency constraints are preserved. Live exchange requests, Teleg
 ## License
 
 [GNU General Public License v3.0](LICENSE).
+
+
+## Offline regression checks
+
+Run `poetry run python -m unittest discover -s tests -v`. The tests use a fake
+exchange and synthetic candles; they do not contact an exchange or Telegram.
+Downloads retry transient network failures at most 3 times per request, retain
+single-candle pages, and stop with an error if pagination cannot advance.
