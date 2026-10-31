@@ -1,70 +1,67 @@
-import ccxt
-import addict
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import addict
+
 import pandas as pd
 import numpy as np
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 
 
 def get_data(
-    symbol: str, exchange_id: str, timeframe: str, since: str, limit: int
+    symbol: str, exchange_id: str, timeframe: str, since: str, limit: int,
+    max_retries: int = 3,
 ) -> pd.DataFrame:
+    """Download OHLCV history, retrying only transient network failures.
+
+    Each failed request gets at most max_retries retries. Pagination advances
+    past the last candle and rejects a non-advancing exchange response.
     """
-    This function downloads data from exchange using ccxt library
+    import ccxt
 
-    Args:
-        symbol (str): name of trading pair
-        exchange_id (str): name of exchange
-        timeframe (str): timeframe: 1d, 4h, 1h, 15m, 5m, etc.
-        since (str): time from which the download starts
-        limit (int): api limit
-
-    Returns:
-        pd.DataFrame: downloaded data
-    """
-
+    if not isinstance(limit, int) or isinstance(limit, bool) or limit <= 0:
+        raise ValueError("limit must be a positive integer")
+    if not isinstance(max_retries, int) or isinstance(max_retries, bool) or max_retries < 0:
+        raise ValueError("max_retries must be a non-negative integer")
     exchange_class = getattr(ccxt, exchange_id)
-    exchange = exchange_class(
-        {
-            "timeout": 30000,
-            "enableRateLimit": True,
-        }
-    )
-    since = exchange.parse8601(since)
+    exchange = exchange_class({"timeout": 30000, "enableRateLimit": True})
+    since_ms = exchange.parse8601(since)
+    if since_ms is None:
+        raise ValueError("since must be an ISO 8601 timestamp")
 
-    while True:
-        try:
-            loaded_markets = exchange.load_markets()
+    def request(operation):
+        for attempt in range(max_retries + 1):
+            try:
+                return operation()
+            except ccxt.NetworkError:
+                if attempt == max_retries:
+                    raise
+                exchange.sleep(exchange.rateLimit * (attempt + 1))
 
-            if exchange.has["fetchOHLCV"]:
-                all_orders = []
-                while since < exchange.milliseconds():
-                    orders = exchange.fetch_ohlcv(
-                        symbol=symbol, timeframe=timeframe, since=since, limit=limit
-                    )
-                    if len(orders) == 1:
-                        break
-                    if len(orders):
-                        since = orders[len(orders) - 1][0]
-                        all_orders += orders
-                    else:
-                        break
+    request(exchange.load_markets)
+    if not exchange.has.get("fetchOHLCV"):
+        raise ValueError(f"{exchange_id} does not support OHLCV downloads")
+    end_ms = exchange.milliseconds()
+    all_orders = []
+    while since_ms < end_ms:
+        orders = request(lambda: exchange.fetch_ohlcv(
+            symbol=symbol, timeframe=timeframe, since=since_ms, limit=limit
+        ))
+        if not orders:
             break
-        except Exception as e:
-            print("Exception in get_data: ", e)
-            exchange.sleep(exchange.rateLimit * 2)
-            continue
+        last_timestamp = max(order[0] for order in orders)
+        if last_timestamp < since_ms:
+            raise RuntimeError("Exchange returned a non-advancing OHLCV page")
+        all_orders.extend(order for order in orders if since_ms <= order[0] <= end_ms)
+        since_ms = last_timestamp + 1
 
-    data = (
-        pd.DataFrame(
-            data=all_orders, columns=["Date", "Open", "High", "Low", "Close", "Volume"]
-        )
-        .drop_duplicates()
-        .reset_index(drop=True)
+    data = pd.DataFrame(
+        all_orders, columns=["Date", "Open", "High", "Low", "Close", "Volume"]
     )
+    data = data.drop_duplicates(subset="Date", keep="last").sort_values("Date").reset_index(drop=True)
     data["Date"] = pd.to_datetime(data["Date"], unit="ms")
     data["Symbol"] = symbol
-
     return data
 
 
@@ -77,6 +74,9 @@ def get_signal(config: addict.Dict) -> pd.DataFrame:
         since=config.since,
         limit=config.limit,
     )
+
+    if data.empty:
+        raise ValueError("No OHLCV data was returned for this market and date range")
 
     # Prepare data to compute vpr
     data = data.set_index("Date")
@@ -118,8 +118,7 @@ def get_signal(config: addict.Dict) -> pd.DataFrame:
 
     # Resample to the target timeframe and apply calculate_vpr
     # as aggregation function to get vpr
-    vpr = data.resample(config.timeframe_to)[["Close"]].apply(calculate_vpr)
-    vpr.name = "vpr"
+    vpr = data["Close"].resample(config.timeframe_to).apply(calculate_vpr).rename("vpr")
 
     # Resample all data to the target timeframe
     resampled_data = data.resample(config.timeframe_to).agg(
@@ -144,6 +143,9 @@ def get_signal(config: addict.Dict) -> pd.DataFrame:
 
 
 def create_plot(config: addict.Dict, data: pd.DataFrame) -> bytes:
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+
     data = data.tail(config.data_horizon)
     fig = make_subplots(
         rows=2,
@@ -182,3 +184,4 @@ def create_plot(config: addict.Dict, data: pd.DataFrame) -> bytes:
     fig = fig.to_image(format="png")
 
     return fig
+
