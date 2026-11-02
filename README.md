@@ -64,7 +64,7 @@ The original dependency constraints are preserved. Live exchange requests, Teleg
 
 ## License
 
-[GNU General Public License v3.0](LICENSE).
+[MIT](LICENSE).
 
 
 ## Offline regression checks
