@@ -93,8 +93,11 @@ async def echo(message: types.Message):
     )
 
 
-if __name__ == "__main__":
-    # Sends every minute pass 5 seconds
+def start_scheduler() -> AsyncIOScheduler:
+    """Inactive example: push send_signal to USER_ID every 60 min 5 s.
+
+    Not called anywhere. To enable scheduled pushes, call it before
+    executor.start_polling and set USER_ID in .env.
     """
     now = datetime.now()
     datetime_now = datetime(
@@ -111,5 +114,8 @@ if __name__ == "__main__":
         kwargs={"bot": bot},
     )
     scheduler.start()
-    """
+    return scheduler
+
+
+if __name__ == "__main__":
     executor.start_polling(dp, skip_updates=True)
