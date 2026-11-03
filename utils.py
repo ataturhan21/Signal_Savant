@@ -83,9 +83,6 @@ def get_signal(config: addict.Dict) -> pd.DataFrame:
     data["return"] = data.Close.diff()
     data["positive_return"] = (data["return"] > 0).astype(int)
 
-    data["volume_price_pos"] = 0
-    data["volume_price_neg"] = 0
-
     def calculate_vpr(ser: pd.Series) -> float:
         # Select portion of data
         window = data.loc[ser.index]
