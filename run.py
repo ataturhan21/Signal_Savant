@@ -2,11 +2,11 @@ import os
 import emoji
 import logging
 from dotenv import load_dotenv
-from datetime import datetime, timedelta
+from datetime import datetime
 from aiogram import Bot, Dispatcher, executor, types
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from config import create_config
-from utils import *
+from utils import create_plot, format_vpr, get_signal
 
 
 # Load env variables
