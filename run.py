@@ -16,6 +16,12 @@ load_dotenv()
 USER_ID = os.getenv("USER_ID")
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
+HELP_TEXT = (
+    "Available commands:\n"
+    "/signal - OHLC/VPR chart for the configured market\n"
+    "/help - show this message"
+)
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 
@@ -71,13 +77,13 @@ async def send_info(message: types.Message):
 
 @dp.message_handler(commands=["start", "help"])
 async def send_welcome(message: types.Message):
-    await message.answer("Hi!")
+    await message.answer("Hi! " + HELP_TEXT)
 
 
 @dp.message_handler()
 async def echo(message: types.Message):
     await message.answer(
-        "Please use help command to learn about valid commands you can use."
+        "Please use /help to learn about valid commands you can use."
     )
 
 
