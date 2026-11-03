@@ -50,12 +50,12 @@ async def send_signal(bot: Bot):
     if row.hard_to_grow or row.hard_to_fall:
         if row.hard_to_grow:
             text_report = (
-                emoji.emojize(":red_circle:") + "Hard to grow: " + str(row.vpr)
+                emoji.emojize(":red_circle:") + "Hard to grow: " + format_vpr(row.vpr)
             )
 
         if row.hard_to_fall:
             text_report = (
-                emoji.emojize(":green_circle:") + "Hard to fall: " + str(row.vpr)
+                emoji.emojize(":green_circle:") + "Hard to fall: " + format_vpr(row.vpr)
             )
 
         # Generate plot
@@ -76,7 +76,7 @@ async def send_info(message: types.Message):
     # Generate plot
     fig = create_plot(config, data)
 
-    text = "VPR: " + str(data.iloc[-1].vpr)
+    text = "VPR: " + format_vpr(data.iloc[-1].vpr)
 
     await message.answer_photo(fig, caption=text)
 

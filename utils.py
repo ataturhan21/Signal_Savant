@@ -142,6 +142,13 @@ def get_signal(config: addict.Dict) -> pd.DataFrame:
     return resampled_data
 
 
+def format_vpr(value: float) -> str:
+    """Render a VPR value for a Telegram caption; NaN means undefined."""
+    if pd.isna(value):
+        return "not available (no up and down moves in the window)"
+    return str(value)
+
+
 def create_plot(config: addict.Dict, data: pd.DataFrame) -> bytes:
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
