@@ -65,13 +65,41 @@ def get_data(
     return data
 
 
-def get_signal(config: addict.Dict) -> pd.DataFrame:
+def recent_window(config: addict.Dict, now: pd.Timestamp | None = None) -> tuple[pd.Timestamp, str]:
+    """Return the first charted bucket and the download start for it.
+
+    The chart shows the last data_horizon target buckets plus the current one.
+    VPR only looks inside each bucket, so older candles never change it; the
+    download starts one source candle early so the first bucket's first price
+    change matches a full-history run.
+    """
+    try:
+        bucket = pd.to_timedelta(config.timeframe_to)
+        candle = pd.to_timedelta(config.timeframe_from)
+    except ValueError as error:
+        raise ValueError("timeframe_from and timeframe_to must be fixed intervals such as 5m or 1h") from error
+    if now is None:
+        now = pd.Timestamp.now(tz="UTC")
+    now = now.tz_convert(None) if now.tzinfo else now
+    first_bucket = now.floor(bucket) - config.data_horizon * bucket
+    since = (first_bucket - candle).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return first_bucket, since
+
+
+def get_signal(config: addict.Dict, now: pd.Timestamp | None = None) -> pd.DataFrame:
+    # A fixed config.since downloads full history; otherwise fetch only the
+    # recent window the chart and the latest signal need.
+    since = getattr(config, "since", None) or None
+    first_bucket = None
+    if since is None:
+        first_bucket, since = recent_window(config, now)
+
     # Download data
     data = get_data(
         symbol=config.symbol,
         exchange_id=config.exchange_id,
         timeframe=config.timeframe_from,
-        since=config.since,
+        since=since,
         limit=config.limit,
     )
 
@@ -131,6 +159,10 @@ def get_signal(config: addict.Dict) -> pd.DataFrame:
 
     # Add vpr to the main dataframe
     resampled_data = resampled_data.join(vpr).reset_index()
+
+    # Drop the partial bucket made by the extra leading candle
+    if first_bucket is not None:
+        resampled_data = resampled_data[resampled_data.Date >= first_bucket].reset_index(drop=True)
 
     # Calculate signals
     resampled_data["hard_to_grow"] = resampled_data.vpr >= config.hard_to_grow_th

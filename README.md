@@ -49,12 +49,12 @@ Edit [`config.py`](config.py) before running:
 | --- | --- |
 | Exchange and symbol | `binance`, `BTC/USDT` |
 | Source and target interval | `5m` to `1h` |
-| Download start | `2023-01-01T00:00:00Z` |
+| Download start | `None`: only the charted window (about 61 hours of `5m` candles, one page) |
 | Fetch limit | `1000` |
 | Upper and lower VPR thresholds | `60` and `40` |
 | Chart history | `60` rows |
 
-The configured history can cause a substantial initial download. Exchange access and Telegram credentials are required for a live run. Indicator thresholds are implementation settings, not a demonstrated prediction accuracy.
+With `since = None`, each signal downloads only the candles behind the charted rows, which fits in one page of candles at the default limit (two requests, the second only confirming the end of the data, against about 400 for full history since 2023). VPR is computed within each target interval, so the result matches a full-history download. Set `since` to an ISO 8601 time such as `2023-01-01T00:00:00Z` to download full history instead, which takes many requests. Exchange access and Telegram credentials are required for a live run. Indicator thresholds are implementation settings, not a demonstrated prediction accuracy.
 
 ## Project map
 
@@ -75,10 +75,10 @@ pagination cannot advance.
 poetry run python -m unittest discover -s tests -v
 ```
 
-Without Poetry, the tests need only NumPy and pandas (this is what CI installs):
+Without Poetry, the tests need only NumPy, pandas and addict (this is what CI installs):
 
 ```bash
-python -m pip install "numpy>=1.26.2,<2" "pandas>=2.1.4,<3"
+python -m pip install "numpy>=1.26.2,<2" "pandas>=2.1.4,<3" "addict>=2.4.0,<3"
 python -m unittest discover -s tests -v
 ```
 
