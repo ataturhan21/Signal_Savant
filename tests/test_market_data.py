@@ -114,6 +114,19 @@ class MarketDataTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "No OHLCV"):
                 utils.get_signal(config)
 
+    def test_undefined_vpr_caption_is_readable(self):
+        prices = [100, 101, 102, 103]
+        frame = pd.DataFrame({"Date": pd.date_range("2024-01-01", periods=4, freq="15min"),
+                              "Open": prices, "High": prices, "Low": prices, "Close": prices,
+                              "Volume": [10] * 4, "Symbol": ["TEST"] * 4})
+        config = types.SimpleNamespace(symbol="TEST", exchange_id="test", timeframe_from="15m",
+            timeframe_to="1h", since="valid", limit=10, hard_to_grow_th=60, hard_to_fall_th=40)
+        with patch.object(utils, "get_data", return_value=frame):
+            vpr = utils.get_signal(config).vpr.iloc[0]
+        self.assertNotIn("nan", utils.format_vpr(vpr))
+        self.assertIn("not available", utils.format_vpr(vpr))
+        self.assertEqual(utils.format_vpr(25.001), "25.001")
+
 
 if __name__ == "__main__":
     unittest.main()

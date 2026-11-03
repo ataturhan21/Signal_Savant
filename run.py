@@ -2,11 +2,11 @@ import os
 import emoji
 import logging
 from dotenv import load_dotenv
-from datetime import datetime, timedelta
+from datetime import datetime
 from aiogram import Bot, Dispatcher, executor, types
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from config import create_config
-from utils import *
+from utils import create_plot, format_vpr, get_signal
 
 
 # Load env variables
@@ -15,6 +15,18 @@ load_dotenv()
 # Get env names
 USER_ID = os.getenv("USER_ID")
 BOT_TOKEN = os.getenv("BOT_TOKEN")
+
+if not BOT_TOKEN:
+    raise SystemExit(
+        "BOT_TOKEN is not set. Copy .env.example to .env in the repository root "
+        "and set BOT_TOKEN to your Telegram bot token."
+    )
+
+HELP_TEXT = (
+    "Available commands:\n"
+    "/signal - OHLC/VPR chart for the configured market\n"
+    "/help - show this message"
+)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -38,12 +50,12 @@ async def send_signal(bot: Bot):
     if row.hard_to_grow or row.hard_to_fall:
         if row.hard_to_grow:
             text_report = (
-                emoji.emojize(":red_circle:") + "Hard to grow: " + str(row.vpr)
+                emoji.emojize(":red_circle:") + "Hard to grow: " + format_vpr(row.vpr)
             )
 
         if row.hard_to_fall:
             text_report = (
-                emoji.emojize(":green_circle:") + "Hard to fall: " + str(row.vpr)
+                emoji.emojize(":green_circle:") + "Hard to fall: " + format_vpr(row.vpr)
             )
 
         # Generate plot
@@ -64,25 +76,28 @@ async def send_info(message: types.Message):
     # Generate plot
     fig = create_plot(config, data)
 
-    text = "VPR: " + str(data.iloc[-1].vpr)
+    text = "VPR: " + format_vpr(data.iloc[-1].vpr)
 
     await message.answer_photo(fig, caption=text)
 
 
 @dp.message_handler(commands=["start", "help"])
 async def send_welcome(message: types.Message):
-    await message.answer("Hi!")
+    await message.answer("Hi! " + HELP_TEXT)
 
 
 @dp.message_handler()
 async def echo(message: types.Message):
     await message.answer(
-        "Please use help command to learn about valid commands you can use."
+        "Please use /help to learn about valid commands you can use."
     )
 
 
-if __name__ == "__main__":
-    # Sends every minute pass 5 seconds
+def start_scheduler() -> AsyncIOScheduler:
+    """Inactive example: push send_signal to USER_ID every 60 min 5 s.
+
+    Not called anywhere. To enable scheduled pushes, call it before
+    executor.start_polling and set USER_ID in .env.
     """
     now = datetime.now()
     datetime_now = datetime(
@@ -99,5 +114,8 @@ if __name__ == "__main__":
         kwargs={"bot": bot},
     )
     scheduler.start()
-    """
+    return scheduler
+
+
+if __name__ == "__main__":
     executor.start_polling(dp, skip_updates=True)

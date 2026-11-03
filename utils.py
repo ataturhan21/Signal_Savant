@@ -83,9 +83,6 @@ def get_signal(config: addict.Dict) -> pd.DataFrame:
     data["return"] = data.Close.diff()
     data["positive_return"] = (data["return"] > 0).astype(int)
 
-    data["volume_price_pos"] = 0
-    data["volume_price_neg"] = 0
-
     def calculate_vpr(ser: pd.Series) -> float:
         # Select portion of data
         window = data.loc[ser.index]
@@ -140,6 +137,13 @@ def get_signal(config: addict.Dict) -> pd.DataFrame:
     resampled_data["hard_to_fall"] = resampled_data.vpr <= config.hard_to_fall_th
 
     return resampled_data
+
+
+def format_vpr(value: float) -> str:
+    """Render a VPR value for a Telegram caption; NaN means undefined."""
+    if pd.isna(value):
+        return "not available (no up and down moves in the window)"
+    return str(value)
 
 
 def create_plot(config: addict.Dict, data: pd.DataFrame) -> bytes:
