@@ -16,6 +16,12 @@ load_dotenv()
 USER_ID = os.getenv("USER_ID")
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
+if not BOT_TOKEN:
+    raise SystemExit(
+        "BOT_TOKEN is not set. Copy .env.example to .env in the repository root "
+        "and set BOT_TOKEN to your Telegram bot token."
+    )
+
 HELP_TEXT = (
     "Available commands:\n"
     "/signal - OHLC/VPR chart for the configured market\n"
