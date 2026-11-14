@@ -82,6 +82,6 @@ python -m pip install "numpy>=1.26.2,<2" "pandas>=2.1.4,<3" "addict>=2.4.0,<3"
 python -m unittest discover -s tests -v
 ```
 
-## License
+## Copyright
 
-[MIT](LICENSE).
+© Ata Turhan. All rights reserved. This repository has no open-source license: its code may not be copied, modified or redistributed.
